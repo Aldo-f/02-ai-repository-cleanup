@@ -113,7 +113,7 @@ while IFS=$'\t' read -r platform repo_name repo_ssh; do
       read -p "Repo already present at $target_dir. [r]e‑clone, [s]kip, [a]rchive, [c]ontinue? " choice
       case "$choice" in
         r|R) rm -rf "$target_dir" 2>/dev/null || true
- git clone --timeout 600 "$repo_ssh" "$target_dir" 2>/dev/null || git clone --timeout 300 "$repo_ssh" "$target_dir" 2>/dev/null || echo "❌ Re-clone failed for $repo_name – logging issue" || true
+        timeout 600 git clone "$repo_ssh" "$target_dir" 2>/dev/null || timeout 300 git clone "$repo_ssh" "$target_dir" 2>/dev/null || echo "❌ Re-clone failed for $repo_name – logging issue" || true
                ;;
         s|S) echo "⏭️  Skipping $repo_name"
              continue
@@ -130,7 +130,7 @@ while IFS=$'\t' read -r platform repo_name repo_ssh; do
       esac
     fi
   else
-    git clone --timeout 600 "$repo_ssh" "$target_dir" 2>/dev/null || git clone --timeout 300 "$repo_ssh" "$target_dir" 2>/dev/null || echo "❌ Clone failed for $repo_name (timeout/network) – logging issue" || true
+    timeout 600 git clone "$repo_ssh" "$target_dir" 2>/dev/null || timeout 300 git clone "$repo_ssh" "$target_dir" 2>/dev/null || echo "❌ Clone failed for $repo_name (timeout/network) – logging issue" || true
   fi
 
   if [[ ! -d "$target_dir/.git" ]]; then
@@ -263,21 +263,24 @@ EOF
   log_file="${BASE_DIR}/logs/${repo_name}.txt"
   {
     echo "=== START LOG ${repo_name} ==="
-    echo "Branch: $cleanup_branch"
-    echo "Commit: $(git rev-parse HEAD)"
-    echo "Diff‑stat:"
-    git diff HEAD~1 HEAD --stat
+    echo "Branch: ${cleanup_branch}"
+    echo "Commit: $(git rev-parse HEAD 2>/dev/null || echo 'unknown')"
+    echo "Diff-stat:"
+    git diff HEAD~1 HEAD --stat 2>/dev/null || echo "no diff"
     echo "=== END LOG ${repo_name} ==="
-  } > "$log_file"
-  echo "📝 Log written → ${repo_name}.txt"
+  } > "${log_file}"
+  echo "📝 Log written → ${log_file}"
 
   # Merge cleanup branch into main/master immediately
-  echo "🔀 Merging $cleanup_branch into main/master…"
+  echo "🔀 Merging ${cleanup_branch} into main/master…"
   git pull origin main 2>/dev/null || git pull origin master 2>/dev/null || true
   git checkout main 2>/dev/null || git checkout master 2>/dev/null || true
-  git merge --no-ff "$cleanup_branch" -m "Merge cleanup branch for $repo_name" || true
+  git merge --no-ff "${cleanup_branch}" -m "Merge cleanup branch for ${repo_name}" || true
   git push origin main 2>/dev/null || git push origin master 2>/dev/null || true
-  git push origin --delete "$cleanup_branch" 2>/dev/null || true
+  echo "🗑️  Deleting remote cleanup branch ${cleanup_branch}…"
+  if ! git push origin --delete "${cleanup_branch}" 2>/dev/null; then
+    echo "⚠️  Failed to delete remote cleanup branch ${cleanup_branch}"
+  fi
 
   # ---------- AI FEEDBACK FOR NEXT REPO ----------
   if [[ "$ai_cli_available" == "true" ]]; then

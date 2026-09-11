@@ -21,14 +21,15 @@ clone_repo() {
     else
       read -p "Repo already present at $target_dir. [r]e‑clone, [s]kip, [a]rchive, [c]ontinue? " choice
       case "$choice" in
-        r|R) rm -rf "$target_dir" 2>/dev/null || true; git clone --timeout 600 "$repo_ssh" "$target_dir" ;;
+        r|R) rm -rf "$target_dir" 2>/dev/null || true
+        timeout 600 git clone "$repo_ssh" "$target_dir" ;;
         s|S) echo "⏭️ Skipping $repo_name"; return 1 ;;
         a|A) local archived_dir="${target_dir}.archive"; mv "$target_dir" "$archived_dir"; echo "📦 Archived"; return 1 ;;
         *) echo "✅ Using existing clone" ;;
       esac
     fi
   else
-    git clone --timeout 600 "$repo_ssh" "$target_dir" 2>/dev/null || git clone --timeout 300 "$repo_ssh" "$target_dir" 2>/dev/null || true
+    timeout 600 git clone "$repo_ssh" "$target_dir" 2>/dev/null || timeout 300 git clone "$repo_ssh" "$target_dir" 2>/dev/null || true
   fi
 
   if [[ ! -d "$target_dir/.git" ]]; then
