@@ -14,29 +14,21 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-# Search for .env in (a) same directory as this script, (b) $HOME/.hermes/
-ENV_PATH=""
-if [[ -f "$(dirname "$0")/.env" ]]; then
-  ENV_PATH="$(dirname "$0")/.env"
-elif [[ -f "${HOME}/.hermes/cleanup.env" ]]; then
-  ENV_PATH="${HOME}/.hermes/cleanup.env"
-fi
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+ENV_PATH="${SCRIPT_DIR}/.env"
 
-if [[ -n "$ENV_PATH" ]]; then
-  # shellcheck source=/dev/null
+if [[ -f "$ENV_PATH" ]]; then
   source "$ENV_PATH"
-  echo "🔧 Loaded configuration from $ENV_PATH"
+  echo "Loaded configuration from $ENV_PATH"
 else
-  echo "⚠️  No .env file found – falling back to built‑in defaults"
+  echo "No .env file found — using built-in defaults"
 fi
 
-# ---------- 1️⃣  DEFAULT‑WAARDEN (overridden by .env) ----------
-: "${BASE_DIR:=\${HOME}/dev}"
+# ---------- 1️⃣  DEFAULTS (overridden by .env) ----------
+: "${BASE_DIR:=/mnt/HDD1/repository-cleanup-dir}"
 : "${GITHUB_ORG:=Aldo-f}"
 : "${GITLAB_GROUP:=Aldo-f}"
-: "${AI_MODEL:=gpt-4o-mini}"
-: "${OPENAI_API_KEY:=}"      # empty string = no AI‑hint
-: "${REPO_LIMIT:=500}"
+: "${REPO_LIMIT:=100}"
 # ----------------------------------------------------------------
 
 # 0. Verify required CLI tools are available
@@ -141,6 +133,10 @@ while IFS=$'\t' read -r platform repo_name repo_ssh; do
     git clone --timeout 600 "$repo_ssh" "$target_dir" 2>/dev/null || git clone --timeout 300 "$repo_ssh" "$target_dir" 2>/dev/null || echo "❌ Clone failed for $repo_name (timeout/network) – logging issue" || true
   fi
 
+  if [[ ! -d "$target_dir/.git" ]]; then
+    echo "❌ Skipping $repo_name — clone did not complete at $target_dir"
+    continue
+  fi
   cd "$target_dir"
 
   # 6.3 Detect the primary technology stack

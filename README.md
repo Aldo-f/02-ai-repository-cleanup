@@ -32,20 +32,14 @@ GitHub and GitLab authentication must be configured before running the full pipe
 
 ## Configuration
 
-Create `~/.hermes/cleanup.env`:
+Create a `.env` file in the repository root (same directory as this README and the cleanup scripts). Example content:
 
 ```bash
-BASE_DIR="/mnt/HDD1/dev"
+BASE_DIR="/mnt/HDD1/repository-cleanup-dir"
 GITHUB_ORG="Aldo-f"
 GITLAB_GROUP="Aldo-f"
 REPO_LIMIT=100
-AI_MODEL="gpt-4o-mini"
-OPENAI_API_KEY=""
 ```
-
-`REPO_LIMIT` controls how many repositories are discovered per platform.
-
-The generated repository list is written to `${BASE_DIR}/repos.tsv`.
 
 ## Quick start
 
@@ -79,8 +73,9 @@ The test script processes the first 3 repositories from `repos.tsv` and does not
 - Repos without `README.md` are skipped.
 - Missing `npm run lint` scripts are tolerated and logged.
 - Clone and npm steps use bounded timeouts.
-- The merge step pulls from `origin/main` or `origin/master` first to avoid diverged-history failures.
+- The merge step pulls from `origin/main` or `origin/master` first to avoid non-fast-forward failures.
 - Remote cleanup branches are deleted after merge when possible.
+- The `.env` file must be present in the repository root for the script to load configuration; if missing, the script continues with defaults and logs any issues.
 
 ## Logs and AI hints
 
